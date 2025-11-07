@@ -1,0 +1,105 @@
+version: "3.9"
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.55.0
+    container_name: prometheus
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--web.enable-lifecycle"
+    ports:
+      - "${PROM_PORT}:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prom_data:/prometheus
+    networks: [analytics-net]
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "${GRAFANA_PORT}:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_DEFAULT_THEME=dark
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    networks: [analytics-net]
+
+  # Exporters infra
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: node-exporter
+    restart: unless-stopped
+    pid: "host"
+    network_mode: host
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    container_name: cadvisor
+    restart: unless-stopped
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    ports:
+      - "18080:8080"
+    networks: [analytics-net]
+
+  # Exporters bases
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: postgres-exporter
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: "postgresql://dw_etl:dw_etl_2025!@postgres-dw:5432/BALONCESTO_DW?sslmode=disable"
+    networks: [analytics-net]
+
+  mssql-exporter:
+    image: quay.io/prometheuscommunity/mssql-exporter:0.13.0
+    container_name: mssql-exporter
+    restart: unless-stopped
+    environment:
+      - SERVER=sqlserver
+      - USERNAME=sa
+      - PASSWORD=YourStrong!Passw0rd
+    ports:
+      - "14000:4000"
+    networks: [analytics-net]
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.67.0
+    container_name: redis-exporter
+    restart: unless-stopped
+    command:
+      - "--redis.addr=redis-cache:6379"
+    ports:
+      - "19121:9121"
+    networks: [analytics-net]
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.25.0
+    container_name: blackbox-exporter
+    restart: unless-stopped
+    networks: [analytics-net]
+
+  logging:
+      driver: json-file
+      options:
+        max-size: "10m"   
+        max-file: "5"  
+
+networks:
+  analytics-net:
+    external: true
+
+volumes:
+  prom_data:
+  grafana_data:

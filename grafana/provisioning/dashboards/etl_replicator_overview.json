@@ -1,0 +1,12 @@
+{
+  "title": "ETL Replicator Overview",
+  "timezone": "browser",
+  "panels": [
+    { "type": "stat", "title": "Lag (s)", "targets": [{ "expr": "etl_replication_lag_seconds" }] },
+    { "type": "graph", "title": "Rows Read", "targets": [{ "expr": "sum(rate(etl_rep_rows_read_total[5m]))" }] },
+    { "type": "graph", "title": "Rows Applied", "targets": [{ "expr": "sum(rate(etl_rep_rows_applied_total[5m]))" }] },
+    { "type": "graph", "title": "Errors", "targets": [{ "expr": "sum(rate(etl_rep_errors_total[5m]))" }] }
+  ],
+  "schemaVersion": 38,
+  "version": 1
+}

@@ -1,0 +1,45 @@
+groups:
+- name: infra
+  rules:
+  - alert: ReplicatorDown
+    expr: up{job="etl-replicator"} == 0
+    for: 2m
+    labels: { severity: critical }
+    annotations:
+      summary: "ETL Replicator caído"
+      description: "El job etl-replicator no expone métricas en /metrics."
+
+  - alert: ReplicationLagHigh
+    expr: etl_replication_lag_seconds > 300
+    for: 5m
+    labels: { severity: critical }
+    annotations:
+      summary: "Lag replicación > 5 min"
+      description: "etl_replication_lag_seconds={{ $value }}"
+
+  - alert: DiskSpaceLow
+    expr: 100 - (node_filesystem_avail_bytes{mountpoint="/"} * 100 / node_filesystem_size_bytes{mountpoint="/"}) > 85
+    for: 10m
+    labels: { severity: warning }
+    annotations:
+      summary: "Disco casi lleno"
+      description: "Uso de disco > 85%"
+
+- name: data
+  rules:
+  - alert: ReconcileMismatch
+    expr: reconcile_mismatch_total > 0
+    for: 10m
+    labels: { severity: warning }
+    annotations:
+      summary: "Diferencias OLTP vs DW"
+      description: "Existen diferencias en el recociliador nocturno."
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: alertmanager
+    restart: unless-stopped
+    ports: ["19093:9093"]
+    volumes:
+      - ./prometheus/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    networks: [analytics-net]
