@@ -15,6 +15,11 @@ services:
       - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prom_data:/prometheus
     networks: [analytics-net]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   grafana:
     image: grafana/grafana:11.1.0
@@ -31,14 +36,23 @@ services:
     depends_on:
       - prometheus
     networks: [analytics-net]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
 
-  # Exporters infra
   node-exporter:
     image: prom/node-exporter:v1.8.2
     container_name: node-exporter
     restart: unless-stopped
     pid: "host"
     network_mode: host
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.47.2
@@ -52,8 +66,12 @@ services:
     ports:
       - "18080:8080"
     networks: [analytics-net]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
 
-  # Exporters bases
   postgres-exporter:
     image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
     container_name: postgres-exporter
@@ -61,18 +79,33 @@ services:
     environment:
       DATA_SOURCE_NAME: "postgresql://dw_etl:dw_etl_2025!@postgres-dw:5432/BALONCESTO_DW?sslmode=disable"
     networks: [analytics-net]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   mssql-exporter:
-    image: quay.io/prometheuscommunity/mssql-exporter:0.13.0
+    image: awaragi/prometheus-mssql-exporter:latest
     container_name: mssql-exporter
     restart: unless-stopped
     environment:
-      - SERVER=sqlserver
+      - SERVER=sqlserver_host,1433
       - USERNAME=sa
       - PASSWORD=YourStrong!Passw0rd
+      - DEBUG=false
     ports:
-      - "14000:4000"
-    networks: [analytics-net]
+      - "4000:4000"
+    networks:
+      - analytics-net
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+
 
   redis-exporter:
     image: oliver006/redis_exporter:v1.67.0
@@ -83,18 +116,22 @@ services:
     ports:
       - "19121:9121"
     networks: [analytics-net]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   blackbox-exporter:
     image: prom/blackbox-exporter:v0.25.0
     container_name: blackbox-exporter
     restart: unless-stopped
     networks: [analytics-net]
-
-  logging:
+    logging:
       driver: json-file
       options:
-        max-size: "10m"   
-        max-file: "5"  
+        max-size: "10m"
+        max-file: "5"
 
 networks:
   analytics-net:
